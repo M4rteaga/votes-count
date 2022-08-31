@@ -127,7 +127,7 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx, next) => {
 		const roomId = ctx.params.roomId;
 		ctx.state.roundId = rondaId;
 		ctx.state.roomId = roomId;
-
+		console.log('routes');
 		await next();
 
 		ctx.response.status = 200;
@@ -160,13 +160,15 @@ app.use(async (ctx, next) => {
 	ctx.state.data = data;
 
 	await reviewVotes(ctx.state.data);
-
+	console.log('middleware cambio el puntaje de las respuestas');
 	await next();
 });
 
 app.use(async (ctx, next) => {
+	console.log('arranque a calificar los usuarios');
 	const scoreMap = await getUserGeneralScore(ctx.state.data);
 	await updateScoreOfUsers(ctx.state.roomId, scoreMap);
+	console.log('middleware termine de enviar los usuarios');
 	await next();
 });
 await app.listen({ port: 8000 });
