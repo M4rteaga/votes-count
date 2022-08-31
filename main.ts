@@ -9,7 +9,6 @@ import {
 	Context,
 	Router,
 } from 'https://deno.land/x/oak@v7.7.0/mod.ts';
-import { resolve } from 'https://deno.land/std@0.99.0/path/win32.ts';
 
 interface FirestoreData {
 	id: string;
@@ -55,8 +54,8 @@ const app = new Application<AppState>();
 const router = new Router();
 
 function reviewVotes(data: FirestoreData[]) {
-	return new Promise<void>((resolve) => {
-		data.forEach(async (r) => {
+	return Promise.all(
+		data.map(async (r) => {
 			const querySnapchotResponses = await fs.getDocs(
 				fs.query(
 					fs.collection(db, `Respuestas/${r.id}/Respuesta`),
@@ -68,9 +67,8 @@ function reviewVotes(data: FirestoreData[]) {
 					puntaje: 0,
 				});
 			});
-		});
-		resolve();
-	});
+		})
+	);
 }
 
 async function getUserGeneralScore(
@@ -170,7 +168,7 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	await reviewVotes(ctx.state.data);
+	await reviewVotes(ctx.state.data).then((_) => console.log('no me rendire'));
 	console.log('termine de cambiar puntajes');
 	await next();
 });
