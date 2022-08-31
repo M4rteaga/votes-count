@@ -53,20 +53,22 @@ const app = new Application<AppState>();
 
 const router = new Router();
 
-async function reviewVotes(data: FirestoreData[]) {
-	await data.forEach(async (r) => {
-		const querySnapchotResponses = await fs.getDocs(
-			fs.query(
-				fs.collection(db, `Respuestas/${r.id}/Respuesta`),
-				fs.where('votos', '<=', 0)
-			)
-		);
-		querySnapchotResponses.docs.forEach(async (e) => {
-			await fs.updateDoc(e.ref, {
-				puntaje: 0,
+function reviewVotes(data: FirestoreData[]) {
+	return new Promise<void>(() =>
+		data.forEach(async (r) => {
+			const querySnapchotResponses = await fs.getDocs(
+				fs.query(
+					fs.collection(db, `Respuestas/${r.id}/Respuesta`),
+					fs.where('votos', '<=', 0)
+				)
+			);
+			querySnapchotResponses.docs.forEach(async (e) => {
+				await fs.updateDoc(e.ref, {
+					puntaje: 0,
+				});
 			});
-		});
-	});
+		})
+	);
 }
 
 async function getUserGeneralScore(
