@@ -130,6 +130,11 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx, next) => {
 		console.log('routes');
 		await next();
 
+		console.log('arranque a calificar los usuarios');
+		const scoreMap = await getUserGeneralScore(ctx.state.data);
+		await updateScoreOfUsers(ctx.state.roomId, scoreMap);
+		console.log('middleware termine de enviar los usuarios');
+
 		ctx.response.status = 200;
 		ctx.response.headers.set('Access-Control-Allow-Origin', '*');
 		ctx.response.body = 'ok';
@@ -161,17 +166,9 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	reviewVotes(ctx.state.data).then(async (_) => {
-		console.log('termine de cambiar los votos');
-		await next();
-	});
-});
-
-app.use(async (ctx, next) => {
-	console.log('arranque a calificar los usuarios');
-	const scoreMap = await getUserGeneralScore(ctx.state.data);
-	await updateScoreOfUsers(ctx.state.roomId, scoreMap);
-	console.log('middleware termine de enviar los usuarios');
+	await reviewVotes(ctx.state.data);
+	console.log('termine de cambiar puntajes');
 	await next();
 });
+
 await app.listen({ port: 8000 });
