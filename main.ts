@@ -75,7 +75,7 @@ async function getUserGeneralScore(
 						);
 						querySnapchotResponses.docs.forEach((e) => {
 							const resData: Respuesta = e.data();
-							console.log('usuario puntaje', user, resData.puntaje);
+							console.log('usuario puntaje', user, resData);
 							userMap.set(user, userMap.get(user)! + resData.puntaje);
 						});
 					})
