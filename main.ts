@@ -146,6 +146,8 @@ app.use(router.routes());
 
 //change internal score on response base on votes
 app.use(async (ctx, next) => {
+	console.log('middleware cambio el puntaje de las respuestas');
+
 	const q = fs.query(
 		fs.collection(db, 'Respuestas'),
 		fs.where('rondaId', '==', ctx.state.roundId)
@@ -159,9 +161,7 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	await reviewVotes(ctx.state.data);
-	console.log('middleware cambio el puntaje de las respuestas');
-	await next();
+	reviewVotes(ctx.state.data).then(async (_) => await next());
 });
 
 app.use(async (ctx, next) => {
