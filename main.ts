@@ -161,7 +161,10 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	reviewVotes(ctx.state.data).then(async (_) => await next());
+	reviewVotes(ctx.state.data).then(async (_) => {
+		console.log('termine de cambiar los votos');
+		await next();
+	});
 });
 
 app.use(async (ctx, next) => {
