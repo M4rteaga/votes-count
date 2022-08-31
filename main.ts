@@ -4,14 +4,11 @@ import 'https://deno.land/x/xhr@0.1.1/mod.ts';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import * as fs from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 
-import { Application, Router } from 'https://deno.land/x/oak@v7.7.0/mod.ts';
-
-const firebaseConfig = JSON.parse(Deno.env.get('FIREBASE_CONFIG')!);
-
-const firebaseApp = initializeApp(firebaseConfig);
-const db = fs.getFirestore(firebaseApp);
-
-const router = new Router();
+import {
+	Application,
+	Context,
+	Router,
+} from 'https://deno.land/x/oak@v7.7.0/mod.ts';
 
 interface FirestoreData {
 	id: string;
@@ -40,6 +37,21 @@ interface Usuarios {
 	leader: boolean;
 	score: number;
 }
+
+interface AppState {
+	roomId: string;
+	roundId: string;
+	data: FirestoreData[];
+}
+
+const firebaseConfig = JSON.parse(Deno.env.get('FIREBASE_CONFIG')!);
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = fs.getFirestore(firebaseApp);
+
+const app = new Application<AppState>();
+
+const router = new Router();
 
 async function reviewVotes(data: FirestoreData[]) {
 	await data.forEach(async (r) => {
@@ -109,25 +121,14 @@ async function updateScoreOfUsers(
 	}
 }
 
-router.get('/checkvotes/:roomId/:rondaId', async (ctx) => {
+router.get('/checkvotes/:roomId/:rondaId', async (ctx, next) => {
 	try {
 		const rondaId = ctx.params.rondaId;
 		const roomId = ctx.params.roomId;
+		ctx.state.roundId = rondaId;
+		ctx.state.roomId = roomId;
 
-		const q = fs.query(
-			fs.collection(db, 'Respuestas'),
-			fs.where('rondaId', '==', rondaId)
-		);
-		const querySnapchot = await fs.getDocs(q);
-		const data = querySnapchot.docs.map((doc) => ({
-			id: doc.id,
-			data: doc.data(),
-		}));
-
-		await reviewVotes(data);
-		const scoreMap = await getUserGeneralScore(data);
-		console.log(scoreMap);
-		await updateScoreOfUsers(roomId!, scoreMap);
+		await next();
 
 		ctx.response.status = 200;
 		ctx.response.headers.set('Access-Control-Allow-Origin', '*');
@@ -141,7 +142,31 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx) => {
 	}
 });
 
-const app = new Application();
-
 app.use(router.routes());
+
+//change internal score on response base on votes
+app.use(async (ctx, next) => {
+	const q = fs.query(
+		fs.collection(db, 'Respuestas'),
+		fs.where('rondaId', '==', ctx.state.roundId)
+	);
+
+	const querySnapchot = await fs.getDocs(q);
+	const data = querySnapchot.docs.map((doc) => ({
+		id: doc.id,
+		data: doc.data(),
+	}));
+
+	ctx.state.data = data;
+
+	await reviewVotes(ctx.state.data);
+
+	await next();
+});
+
+app.use(async (ctx, next) => {
+	const scoreMap = await getUserGeneralScore(ctx.state.data);
+	await updateScoreOfUsers(ctx.state.roomId, scoreMap);
+	await next();
+});
 await app.listen({ port: 8000 });
