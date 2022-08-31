@@ -75,6 +75,7 @@ async function getUserGeneralScore(
 						);
 						querySnapchotResponses.docs.forEach((e) => {
 							const resData: Respuesta = e.data();
+							console.log('usuario puntaje', user, resData.puntaje);
 							userMap.set(user, userMap.get(user)! + resData.puntaje);
 						});
 					})
@@ -93,23 +94,25 @@ async function updateScoreOfUsers(
 	roomId: string,
 	userScoreMap: Map<string, number>
 ) {
-	const querySnapchot = await fs.getDocs(
-		fs.collection(db, `Salas/${roomId}/Usuarios`)
-	);
-	querySnapchot.docs.forEach(async (doc) => {
-		await fs.updateDoc(doc.ref, {
-			score: userScoreMap.get(doc.data().user),
+	try {
+		const querySnapchot = await fs.getDocs(
+			fs.collection(db, `Salas/${roomId}/Usuarios`)
+		);
+		querySnapchot.docs.forEach(async (doc) => {
+			await fs.updateDoc(doc.ref, {
+				score: fs.increment(userScoreMap.get(doc.data().user)),
+			});
 		});
-	});
+	} catch (error) {
+		console.log('increment error', error);
+		throw new Error(error);
+	}
 }
 
 router.get('/checkvotes/:roomId/:rondaId', async (ctx) => {
 	try {
-		console.log('mandaron request aca');
 		const rondaId = ctx.params.rondaId;
 		const roomId = ctx.params.roomId;
-		console.log('roundID', rondaId);
-		console.log('roomId', roomId);
 
 		const q = fs.query(
 			fs.collection(db, 'Respuestas'),
@@ -121,7 +124,6 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx) => {
 			data: doc.data(),
 		}));
 
-		console.log('data', data);
 		await reviewVotes(data);
 		const scoreMap = await getUserGeneralScore(data);
 		console.log(scoreMap);
