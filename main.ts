@@ -130,7 +130,7 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx) => {
 		await updateScoreOfUsers(roomId!, scoreMap);
 
 		ctx.response.status = 200;
-		ctx.response.headers.set('Acces-Control-Allow-Origin', '*');
+		ctx.response.headers.set('Access-Control-Allow-Origin', '*');
 		ctx.response.body = 'ok';
 		ctx.response.type = 'text';
 	} catch (error) {
