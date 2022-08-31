@@ -41,8 +41,8 @@ interface Usuarios {
 	score: number;
 }
 
-function reviewVotes(data: FirestoreData[]) {
-	data.forEach(async (r) => {
+async function reviewVotes(data: FirestoreData[]) {
+	await data.forEach(async (r) => {
 		const querySnapchotResponses = await fs.getDocs(
 			fs.query(
 				fs.collection(db, `Respuestas/${r.id}/Respuesta`),
