@@ -4,11 +4,7 @@ import 'https://deno.land/x/xhr@0.1.1/mod.ts';
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-app.js';
 import * as fs from 'https://www.gstatic.com/firebasejs/9.6.0/firebase-firestore.js';
 
-import {
-	Application,
-	Context,
-	Router,
-} from 'https://deno.land/x/oak@v7.7.0/mod.ts';
+import { Application, Router } from 'https://deno.land/x/oak@v7.7.0/mod.ts';
 
 interface FirestoreData {
 	id: string;
@@ -42,6 +38,8 @@ interface AppState {
 	roomId: string;
 	roundId: string;
 	data: FirestoreData[];
+
+	userScoreMap: Map<string, number>;
 }
 
 const firebaseConfig = JSON.parse(Deno.env.get('FIREBASE_CONFIG')!);
@@ -53,43 +51,31 @@ const app = new Application<AppState>();
 
 const router = new Router();
 
-function reviewVotes(data: FirestoreData[]) {
-	return Promise.all(
-		data.map(async (r) => {
-			const querySnapchotResponses = await fs.getDocs(
-				fs.query(
-					fs.collection(db, `Respuestas/${r.id}/Respuesta`),
-					fs.where('votos', '<=', 0)
-				)
-			);
-			querySnapchotResponses.docs.forEach(async (e) => {
-				await fs.updateDoc(e.ref, {
-					puntaje: 0,
-				});
-			});
-		})
-	);
-}
-
-async function getUserGeneralScore(
-	data: FirestoreData[]
-): Promise<Map<string, number>> {
+function reviewVotes(data: FirestoreData[]): Promise<Map<string, number>> {
 	const scoreMap: Promise<Map<string, number>> = new Promise(
 		(resolve, reject) => {
 			try {
 				const userMap = new Map<string, number>();
+
 				Promise.all(
 					data.map(async (r) => {
 						const user = r.data.usuario;
 						if (!userMap.get(user)) {
 							userMap.set(user, 0);
 						}
-						const querySnapchotResponses = await fs.getDocsFromServer(
-							fs.query(fs.collection(db, `Respuestas/${r.id}/Respuesta`))
+
+						const querySnapchotResponses = await fs.getDocs(
+							fs.collection(db, `Respuestas/${r.id}/Respuesta`)
 						);
-						querySnapchotResponses.docs.forEach((e) => {
+						querySnapchotResponses.docs.forEach(async (e) => {
 							const resData: Respuesta = e.data();
-							userMap.set(user, userMap.get(user)! + resData.puntaje);
+							if (resData.votos <= 0) {
+								await fs.updateDoc(e.ref, {
+									puntaje: 0,
+								});
+							} else {
+								userMap.set(user, userMap.get(user)! + resData.puntaje);
+							}
 						});
 					})
 				).then(() => resolve(userMap));
@@ -100,7 +86,7 @@ async function getUserGeneralScore(
 		}
 	);
 
-	return await scoreMap;
+	return scoreMap;
 }
 
 async function updateScoreOfUsers(
@@ -130,7 +116,7 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx, next) => {
 		ctx.state.roomId = roomId;
 		await next();
 
-		const scoreMap = await getUserGeneralScore(ctx.state.data);
+		const scoreMap = ctx.state.userScoreMap;
 		await updateScoreOfUsers(ctx.state.roomId, scoreMap);
 
 		ctx.response.status = 200;
@@ -162,7 +148,8 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	await reviewVotes(ctx.state.data);
+	const userScoreMap = await reviewVotes(ctx.state.data);
+	ctx.state.userScoreMap = userScoreMap;
 	await next();
 });
 
