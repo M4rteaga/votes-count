@@ -89,7 +89,6 @@ async function getUserGeneralScore(
 						);
 						querySnapchotResponses.docs.forEach((e) => {
 							const resData: Respuesta = e.data();
-							console.log('usuario puntaje', user, resData);
 							userMap.set(user, userMap.get(user)! + resData.puntaje);
 						});
 					})
@@ -129,13 +128,10 @@ router.get('/checkvotes/:roomId/:rondaId', async (ctx, next) => {
 		const roomId = ctx.params.roomId;
 		ctx.state.roundId = rondaId;
 		ctx.state.roomId = roomId;
-		console.log('routes');
 		await next();
 
-		console.log('arranque a calificar los usuarios');
 		const scoreMap = await getUserGeneralScore(ctx.state.data);
 		await updateScoreOfUsers(ctx.state.roomId, scoreMap);
-		console.log('middleware termine de enviar los usuarios');
 
 		ctx.response.status = 200;
 		ctx.response.headers.set('Access-Control-Allow-Origin', '*');
@@ -153,8 +149,6 @@ app.use(router.routes());
 
 //change internal score on response base on votes
 app.use(async (ctx, next) => {
-	console.log('middleware cambio el puntaje de las respuestas');
-
 	const q = fs.query(
 		fs.collection(db, 'Respuestas'),
 		fs.where('rondaId', '==', ctx.state.roundId)
@@ -168,8 +162,7 @@ app.use(async (ctx, next) => {
 
 	ctx.state.data = data;
 
-	await reviewVotes(ctx.state.data).then((_) => console.log('no me rendire'));
-	console.log('termine de cambiar puntajes');
+	await reviewVotes(ctx.state.data);
 	await next();
 });
 
