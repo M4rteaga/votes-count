@@ -84,7 +84,7 @@ async function getUserGeneralScore(
 						if (!userMap.get(user)) {
 							userMap.set(user, 0);
 						}
-						const querySnapchotResponses = await fs.getDocs(
+						const querySnapchotResponses = await fs.getDocsFromServer(
 							fs.query(fs.collection(db, `Respuestas/${r.id}/Respuesta`))
 						);
 						querySnapchotResponses.docs.forEach((e) => {
